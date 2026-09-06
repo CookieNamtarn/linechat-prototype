@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { replyToConversation, markConversationRead } from "@/lib/line.functions";
 import { useServerFn } from "@tanstack/react-start";
-import { MessageCircle, Send, Megaphone, User } from "lucide-react";
+import { MessageCircle, Send, Megaphone, ClipboardList, User } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
@@ -155,6 +155,13 @@ function Inbox() {
           </div>
           <h1 className="text-lg font-semibold">LINE OA Inbox</h1>
         </div>
+        <Link
+          to="/planner"
+          className="inline-flex items-center gap-2 rounded-md bg-[#1A73E8] px-3 py-2 text-sm font-medium text-white hover:bg-[#1557b0]"
+        >
+          <ClipboardList className="h-4 w-4" />
+          Planner
+        </Link>
         <Link
           to="/broadcast"
           className="inline-flex items-center gap-2 rounded-md bg-[#06C755] px-3 py-2 text-sm font-medium text-white hover:bg-[#05b04b]"
