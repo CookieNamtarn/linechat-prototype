@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BroadcastRouteImport } from './routes/broadcast'
 import { Route as ApiPublicLineWebhookRouteImport } from './routes/api/public/line-webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BroadcastRoute = BroadcastRouteImport.update({
+  id: '/broadcast',
+  path: '/broadcast',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicLineWebhookRoute = ApiPublicLineWebhookRouteImport.update({
@@ -25,27 +31,31 @@ const ApiPublicLineWebhookRoute = ApiPublicLineWebhookRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/broadcast': typeof BroadcastRoute
   '/api/public/line-webhook': typeof ApiPublicLineWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/broadcast': typeof BroadcastRoute
   '/api/public/line-webhook': typeof ApiPublicLineWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/broadcast': typeof BroadcastRoute
   '/api/public/line-webhook': typeof ApiPublicLineWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/public/line-webhook'
+  fullPaths: '/' | '/broadcast' | '/api/public/line-webhook'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/public/line-webhook'
-  id: '__root__' | '/' | '/api/public/line-webhook'
+  to: '/' | '/broadcast' | '/api/public/line-webhook'
+  id: '__root__' | '/' | '/broadcast' | '/api/public/line-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BroadcastRoute: typeof BroadcastRoute
   ApiPublicLineWebhookRoute: typeof ApiPublicLineWebhookRoute
 }
 
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/broadcast': {
+      id: '/broadcast'
+      path: '/broadcast'
+      fullPath: '/broadcast'
+      preLoaderRoute: typeof BroadcastRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/line-webhook': {
@@ -70,6 +87,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BroadcastRoute: BroadcastRoute,
   ApiPublicLineWebhookRoute: ApiPublicLineWebhookRoute,
 }
 export const routeTree = rootRouteImport
