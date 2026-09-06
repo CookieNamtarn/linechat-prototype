@@ -113,3 +113,85 @@ export const markConversationRead = createServerFn({ method: "POST" })
       .eq("id", data.conversationId);
     return { ok: true };
   });
+
+// ============================================
+// Flex Message Helpers
+// ============================================
+
+export async function sendFlexMessage(
+  to: string,
+  flexMessage: object
+): Promise<void> {
+  const token = process.env["LINE_CHANNEL_ACCESS_TOKEN"];
+  if (!token) throw new Error("LINE Channel access token not configured");
+
+  const res = await fetch("https://api.line.me/v2/bot/message/push", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      to,
+      messages: [flexMessage],
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error("LINE push failed", res.status, errText);
+    throw new Error("Failed to send Flex Message");
+  }
+}
+
+export async function sendDowntimeAlert(data: {
+  machineName: string;
+  productName: string;
+  workerName: string;
+  reason: string;
+  reasonDetail?: string;
+  time: string;
+  orderNumber: string;
+}): Promise<void> {
+  const token = process.env["LINE_CHANNEL_ACCESS_TOKEN"];
+  const adminGroupId = process.env["LINE_ADMIN_GROUP_ID"];
+
+  if (!token) throw new Error("LINE Channel access token not configured");
+  if (!adminGroupId) {
+    console.warn("LINE_ADMIN_GROUP_ID not configured, skipping downtime alert");
+    return;
+  }
+
+  const message = {
+    type: "text",
+    text:
+      `🚨 แจ้งปัญหาการผลิต\n` +
+      `────────────────────\n` +
+      `เครื่อง: ${data.machineName}\n` +
+      `สินค้า: ${data.productName}\n` +
+      `Order: ${data.orderNumber}\n` +
+      `ผู้แจ้ง: ${data.workerName}\n` +
+      `สาเหตุ: ${data.reason}` +
+      (data.reasonDetail ? ` (${data.reasonDetail})` : "") +
+      `\nเวลา: ${data.time} น.\n` +
+      `────────────────────\n` +
+      `กดลิงก์เพื่อดูรายละเอียด: https://linechat-prototype.lovable.app/dashboard`,
+  };
+
+  const res = await fetch("https://api.line.me/v2/bot/message/push", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      to: adminGroupId,
+      messages: [message],
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error("LINE downtime alert failed", res.status, errText);
+  }
+}
