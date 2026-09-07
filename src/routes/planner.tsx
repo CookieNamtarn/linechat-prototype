@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ClipboardList,
@@ -119,21 +119,8 @@ function PlannerDashboard() {
     queryFn: () => ordersHistoryFn(),
   });
 
-  // Filter workers by selected machine
-  const filteredWorkers = selectedMachine
-    ? (masterData?.workers ?? []).filter(
-        (w) => w.machines?.machine_code === selectedMachine
-      )
-    : masterData?.workers ?? [];
-
-  // Auto-select worker when machine changes
-  useEffect(() => {
-    if (selectedMachine && filteredWorkers.length > 0) {
-      setSelectedWorker(filteredWorkers[0]!.id);
-    } else {
-      setSelectedWorker("");
-    }
-  }, [selectedMachine, filteredWorkers]);
+  // Show all active workers (not bound to machines)
+  const filteredWorkers = masterData?.workers ?? [];
 
   // Get product unit display
   const selectedProductData = masterData?.products.find(
