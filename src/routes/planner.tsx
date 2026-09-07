@@ -29,7 +29,7 @@ export const Route = createFileRoute("/planner")({
     meta: [
       { title: "Planner Dashboard — สั่งงานผลิต" },
       {
-        name: "description":,
+        name: "description",
         content: "หน้าสั่งงานผลิต สร้างคำสั่งผลิตและส่งให้พนักงานผ่าน LINE OA",
       },
     ],
@@ -129,7 +129,7 @@ function PlannerDashboard() {
   // Auto-select worker when machine changes
   useEffect(() => {
     if (selectedMachine && filteredWorkers.length > 0) {
-      setSelectedWorker(filteredWorkers[0].id);
+      setSelectedWorker(filteredWorkers[0]!.id);
     } else {
       setSelectedWorker("");
     }
@@ -310,7 +310,7 @@ function PlannerDashboard() {
         icon: XCircle,
       },
     };
-    const c = config[status] || config.assigned;
+    const c = config[status] ?? config['assigned']!;
     const Icon = c.icon;
     return (
       <span
@@ -719,11 +719,11 @@ function PlannerDashboard() {
                             {order.products.product_name}
                             {order.production_outputs?.length && (
                               <span className="ml-2 text-green-600">
-                                OK: {order.production_outputs[0].ok_qty}
-                                {order.production_outputs[0].ng_qty > 0 && (
+                                OK: {order.production_outputs[0]!.ok_qty}
+                                {order.production_outputs[0]!.ng_qty > 0 && (
                                   <span className="text-red-500">
                                     {" "}
-                                    | NG: {order.production_outputs[0].ng_qty}
+                                    | NG: {order.production_outputs[0]!.ng_qty}
                                   </span>
                                 )}
                               </span>

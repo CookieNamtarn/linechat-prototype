@@ -149,7 +149,7 @@ export async function sendDowntimeAlert(data: {
   productName: string;
   workerName: string;
   reason: string;
-  reasonDetail?: string;
+  reasonDetail?: string | undefined;
   time: string;
   orderNumber: string;
 }): Promise<void> {

@@ -66,9 +66,9 @@ export const createTemplate = createServerFn({ method: "POST" })
     machineId: string;
     workerId: string;
     plannedQuantity: number;
-    plannedStartTime?: string;
-    plannedEndTime?: string;
-    notes?: string;
+    plannedStartTime?: string | undefined;
+    plannedEndTime?: string | undefined;
+    notes?: string | undefined;
   }) => {
     if (!data.templateName?.trim()) throw new Error("Template name is required");
     if (!data.productId) throw new Error("Product is required");
@@ -106,7 +106,7 @@ export const deleteTemplate = createServerFn({ method: "POST" })
     if (!data.templateId) throw new Error("Template ID is required");
     return data.templateId;
   })
-  .handler(async (templateId: string) => {
+  .handler(async ({ data: templateId }) => {
     const { error } = await supabaseAdmin
       .from("production_templates")
       .update({ is_active: false })
