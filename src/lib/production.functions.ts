@@ -27,29 +27,29 @@ type CreateOrderInput = {
   machineId: string;
   workerId: string;
   plannedQuantity: number;
-  plannedStartTime?: string;
-  plannedEndTime?: string;
-  notes?: string;
-  createdBy?: string;
+  plannedStartTime?: string | undefined;
+  plannedEndTime?: string | undefined;
+  notes?: string | undefined;
+  createdBy?: string | undefined;
 };
 
 type ProductionEventInput = {
   orderId: string;
   eventType: "start" | "pause" | "resume" | "complete" | "cancel";
-  notes?: string;
+  notes?: string | undefined;
 };
 
 type RecordOutputInput = {
   orderId: string;
   okQty: number;
   ngQty: number;
-  ngReason?: string;
+  ngReason?: string | undefined;
 };
 
 type DowntimeInput = {
   orderId: string;
   reason: "machine_breakdown" | "no_material" | "no_operator" | "quality_issue" | "changeover" | "other";
-  reasonDetail?: string;
+  reasonDetail?: string | undefined;
 };
 
 // ============================================
@@ -88,11 +88,11 @@ export const createProductionOrder = createServerFn({ method: "POST" })
         machine_id: data.machineId,
         worker_id: data.workerId,
         planned_quantity: data.plannedQuantity,
-        planned_start_time: data.plannedStartTime,
-        planned_end_time: data.plannedEndTime,
+        planned_start_time: data.plannedStartTime ?? null,
+        planned_end_time: data.plannedEndTime ?? null,
         status: "assigned",
-        notes: data.notes,
-        created_by: data.createdBy,
+        notes: data.notes ?? null,
+        created_by: data.createdBy ?? null,
       })
       .select("*")
       .single();
@@ -165,7 +165,7 @@ export const handleProductionAction = createServerFn({ method: "POST" })
         order_id: data.orderId,
         event_type: data.eventType,
         event_time: now,
-        notes: data.notes,
+        notes: data.notes ?? null,
       });
 
     if (eventError) {
@@ -264,7 +264,7 @@ export const recordOutput = createServerFn({ method: "POST" })
         order_id: data.orderId,
         ok_qty: data.okQty,
         ng_qty: data.ngQty,
-        ng_reason: data.ngReason,
+        ng_reason: data.ngReason ?? null,
       });
 
     if (outputError) {
@@ -372,7 +372,7 @@ export const reportDowntime = createServerFn({ method: "POST" })
       .insert({
         order_id: data.orderId,
         reason: data.reason,
-        reason_detail: data.reasonDetail,
+        reason_detail: data.reasonDetail ?? null,
         start_time: now,
       })
       .select("*")
@@ -434,7 +434,7 @@ export const reportDowntime = createServerFn({ method: "POST" })
         productName: product?.product_name || "Unknown",
         workerName: worker?.full_name || "Unknown",
         reason: reasonLabels[data.reason] || data.reason,
-        reasonDetail: data.reasonDetail,
+        ...(data.reasonDetail ? { reasonDetail: data.reasonDetail } : {}),
         time: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
         orderNumber: order.order_number,
       });
@@ -472,7 +472,7 @@ export const resumeProduction = createServerFn({ method: "POST" })
     if (!data.orderId) throw new Error("Order ID is required");
     return data.orderId;
   })
-  .handler(async (orderId: string) => {
+  .handler(async ({ data: orderId }) => {
     const token = process.env["LINE_CHANNEL_ACCESS_TOKEN"];
     if (!token) throw new Error("LINE Channel access token not configured");
 
@@ -583,8 +583,8 @@ type FlexMessageData = {
   productName: string;
   machineName: string;
   plannedQuantity: number;
-  plannedStartTime?: string;
-  plannedEndTime?: string;
+  plannedStartTime?: string | undefined;
+  plannedEndTime?: string | undefined;
 };
 
 function buildAssignedFlexMessage(data: FlexMessageData) {

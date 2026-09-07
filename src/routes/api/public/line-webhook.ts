@@ -91,8 +91,8 @@ export const Route = createFileRoute("/api/public/line-webhook")({
               await supabaseAdmin
                 .from("conversations")
                 .update({
-                  display_name: displayName ?? undefined,
-                  picture_url: pictureUrl ?? undefined,
+                  display_name: displayName ?? null,
+                  picture_url: pictureUrl ?? null,
                   last_message_at: new Date().toISOString(),
                   last_message_text: previewText,
                   unread_count: (existing.unread_count ?? 0) + 1,
