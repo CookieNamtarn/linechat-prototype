@@ -149,7 +149,48 @@ export const createProductionOrder = createServerFn({ method: "POST" })
       await sendFlexMessage(worker.line_user_id, flexMessage);
     }
 
-    return { ok: true, orderId: order.id };
+    // 5. Broadcast the new order to all LINE OA followers
+    const broadcastText =
+      `📋 คำสั่งผลิตใหม่\n` +
+      `────────────────────\n` +
+      `Order: ${order.order_number}\n` +
+      `สินค้า: ${product?.product_name ?? "-"}\n` +
+      `เครื่อง: ${machine?.machine_name ?? "-"}\n` +
+      `พนักงาน: ${worker?.full_name ?? "-"}\n` +
+      `จำนวน: ${data.plannedQuantity.toLocaleString("th-TH")} pcs\n` +
+      (data.plannedStartTime ? `เริ่ม: ${data.plannedStartTime} น.\n` : "") +
+      (data.plannedEndTime ? `เสร็จ: ${data.plannedEndTime} น.\n` : "") +
+      (data.notes ? `หมายเหตุ: ${data.notes}\n` : "") +
+      `────────────────────`;
+
+    const broadcastRes = await fetch("https://api.line.me/v2/bot/message/broadcast", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        messages: [{ type: "text", text: broadcastText }],
+      }),
+    });
+
+    if (!broadcastRes.ok) {
+      const errText = await broadcastRes.text();
+      console.error("LINE broadcast failed", broadcastRes.status, errText);
+      await supabaseAdmin.from("broadcasts").insert({
+        text: broadcastText,
+        status: "failed",
+        error: `LINE API error ${broadcastRes.status}`,
+      });
+      // Do not fail the whole order creation — the order is already saved.
+      return { ok: true, orderId: order.id, broadcast: "failed" as const };
+    }
+
+    await supabaseAdmin
+      .from("broadcasts")
+      .insert({ text: broadcastText, status: "sent" });
+
+    return { ok: true, orderId: order.id, broadcast: "sent" as const };
   });
 
 // ============================================
