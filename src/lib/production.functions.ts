@@ -76,6 +76,18 @@ export const createProductionOrder = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data }) => {
+    // Accept "HH:MM" time-only values from the planner form and turn them
+    // into a full timestamp on today's date (Asia/Bangkok, UTC+7).
+    const toTimestamp = (value: string | undefined): string | null => {
+      if (!value) return null;
+      const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+      if (!match) return value;
+      const now = new Date(Date.now() + 7 * 60 * 60 * 1000);
+      const day = now.toISOString().slice(0, 10);
+      const hh = match[1]!.padStart(2, "0");
+      return `${day}T${hh}:${match[2]}:00+07:00`;
+    };
+
     const token = process.env["LINE_CHANNEL_ACCESS_TOKEN"];
     if (!token) throw new Error("LINE Channel access token not configured");
 
@@ -88,8 +100,8 @@ export const createProductionOrder = createServerFn({ method: "POST" })
         machine_id: data.machineId,
         worker_id: data.workerId,
         planned_quantity: data.plannedQuantity,
-        planned_start_time: data.plannedStartTime ?? null,
-        planned_end_time: data.plannedEndTime ?? null,
+        planned_start_time: toTimestamp(data.plannedStartTime),
+        planned_end_time: toTimestamp(data.plannedEndTime),
         status: "assigned",
         notes: data.notes ?? null,
         created_by: data.createdBy ?? null,
