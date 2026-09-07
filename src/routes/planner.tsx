@@ -29,7 +29,7 @@ export const Route = createFileRoute("/planner")({
     meta: [
       { title: "Planner Dashboard — สั่งงานผลิต" },
       {
-        name: "description":,
+        name: "description",
         content: "หน้าสั่งงานผลิต สร้างคำสั่งผลิตและส่งให้พนักงานผ่าน LINE OA",
       },
     ],
