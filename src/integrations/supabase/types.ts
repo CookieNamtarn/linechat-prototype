@@ -71,6 +71,71 @@ export type Database = {
         }
         Relationships: []
       }
+      downtime_logs: {
+        Row: {
+          created_at: string
+          duration_minutes: number | null
+          end_time: string | null
+          id: string
+          order_id: string
+          reason: string
+          reason_detail: string | null
+          start_time: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes?: number | null
+          end_time?: string | null
+          id?: string
+          order_id: string
+          reason: string
+          reason_detail?: string | null
+          start_time?: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number | null
+          end_time?: string | null
+          id?: string
+          order_id?: string
+          reason?: string
+          reason_detail?: string | null
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "downtime_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machines: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          machine_code: string
+          machine_name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          machine_code: string
+          machine_name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          machine_code?: string
+          machine_name?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           conversation_id: string
@@ -105,6 +170,275 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_events: {
+        Row: {
+          created_at: string
+          event_time: string
+          event_type: string
+          id: string
+          notes: string | null
+          order_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_time?: string
+          event_type: string
+          id?: string
+          notes?: string | null
+          order_id: string
+        }
+        Update: {
+          created_at?: string
+          event_time?: string
+          event_type?: string
+          id?: string
+          notes?: string | null
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_orders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          machine_id: string
+          notes: string | null
+          order_number: string
+          planned_end_time: string | null
+          planned_quantity: number
+          planned_start_time: string | null
+          product_id: string
+          status: string
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          machine_id: string
+          notes?: string | null
+          order_number: string
+          planned_end_time?: string | null
+          planned_quantity: number
+          planned_start_time?: string | null
+          product_id: string
+          status?: string
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          machine_id?: string
+          notes?: string | null
+          order_number?: string
+          planned_end_time?: string | null
+          planned_quantity?: number
+          planned_start_time?: string | null
+          product_id?: string
+          status?: string
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_orders_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_orders_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_outputs: {
+        Row: {
+          created_at: string
+          id: string
+          ng_qty: number
+          ng_reason: string | null
+          ok_qty: number
+          order_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ng_qty?: number
+          ng_reason?: string | null
+          ok_qty?: number
+          order_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ng_qty?: number
+          ng_reason?: string | null
+          ok_qty?: number
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_outputs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_templates: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          machine_id: string
+          notes: string | null
+          planned_end_time: string | null
+          planned_quantity: number
+          planned_start_time: string | null
+          product_id: string
+          template_name: string
+          worker_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          machine_id: string
+          notes?: string | null
+          planned_end_time?: string | null
+          planned_quantity: number
+          planned_start_time?: string | null
+          product_id: string
+          template_name: string
+          worker_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          machine_id?: string
+          notes?: string | null
+          planned_end_time?: string | null
+          planned_quantity?: number
+          planned_start_time?: string | null
+          product_id?: string
+          template_name?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_templates_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_templates_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_templates_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          product_name: string
+          sku: string
+          unit: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          product_name: string
+          sku: string
+          unit?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          product_name?: string
+          sku?: string
+          unit?: string
+        }
+        Relationships: []
+      }
+      workers: {
+        Row: {
+          created_at: string
+          employee_id: string
+          full_name: string
+          id: string
+          is_active: boolean
+          line_user_id: string | null
+          machine_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          full_name: string
+          id?: string
+          is_active?: boolean
+          line_user_id?: string | null
+          machine_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          line_user_id?: string | null
+          machine_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workers_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
             referencedColumns: ["id"]
           },
         ]
