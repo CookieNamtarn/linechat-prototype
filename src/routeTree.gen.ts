@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BroadcastRouteImport } from './routes/broadcast'
+import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as ApiPublicLineWebhookRouteImport } from './routes/api/public/line-webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,11 @@ const BroadcastRoute = BroadcastRouteImport.update({
   path: '/broadcast',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlannerRoute = PlannerRouteImport.update({
+  id: '/planner',
+  path: '/planner',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicLineWebhookRoute = ApiPublicLineWebhookRouteImport.update({
   id: '/api/public/line-webhook',
   path: '/api/public/line-webhook',
@@ -32,30 +38,34 @@ const ApiPublicLineWebhookRoute = ApiPublicLineWebhookRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/broadcast': typeof BroadcastRoute
+  '/planner': typeof PlannerRoute
   '/api/public/line-webhook': typeof ApiPublicLineWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/broadcast': typeof BroadcastRoute
+  '/planner': typeof PlannerRoute
   '/api/public/line-webhook': typeof ApiPublicLineWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/broadcast': typeof BroadcastRoute
+  '/planner': typeof PlannerRoute
   '/api/public/line-webhook': typeof ApiPublicLineWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/broadcast' | '/api/public/line-webhook'
+  fullPaths: '/' | '/broadcast' | '/planner' | '/api/public/line-webhook'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/broadcast' | '/api/public/line-webhook'
-  id: '__root__' | '/' | '/broadcast' | '/api/public/line-webhook'
+  to: '/' | '/broadcast' | '/planner' | '/api/public/line-webhook'
+  id: '__root__' | '/' | '/broadcast' | '/planner' | '/api/public/line-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BroadcastRoute: typeof BroadcastRoute
+  PlannerRoute: typeof PlannerRoute
   ApiPublicLineWebhookRoute: typeof ApiPublicLineWebhookRoute
 }
 
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BroadcastRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/planner': {
+      id: '/planner'
+      path: '/planner'
+      fullPath: '/planner'
+      preLoaderRoute: typeof PlannerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/line-webhook': {
       id: '/api/public/line-webhook'
       path: '/api/public/line-webhook'
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BroadcastRoute: BroadcastRoute,
+  PlannerRoute: PlannerRoute,
   ApiPublicLineWebhookRoute: ApiPublicLineWebhookRoute,
 }
 export const routeTree = rootRouteImport
