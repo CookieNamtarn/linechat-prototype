@@ -145,7 +145,7 @@ export const createProductionOrder = createServerFn({ method: "POST" })
       await sendWorkerMessage(worker.telegram_chat_id, flexMessage);
     }
 
-    // 5. Broadcast the new order to all LINE OA followers
+    // 5. ส่งประกาศคำสั่งผลิตใหม่เข้ากลุ่ม Telegram
     const broadcastText =
       `📋 คำสั่งผลิตใหม่\n` +
       `────────────────────\n` +
@@ -159,34 +159,10 @@ export const createProductionOrder = createServerFn({ method: "POST" })
       (data.notes ? `หมายเหตุ: ${data.notes}\n` : "") +
       `────────────────────`;
 
-    const broadcastRes = await fetch("https://api.line.me/v2/bot/message/broadcast", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        messages: [{ type: "text", text: broadcastText }],
-      }),
-    });
+    const { broadcastToGroup } = await import("@/lib/telegram.server");
+    const broadcastStatus = await broadcastToGroup(broadcastText);
 
-    if (!broadcastRes.ok) {
-      const errText = await broadcastRes.text();
-      console.error("LINE broadcast failed", broadcastRes.status, errText);
-      await supabaseAdmin.from("broadcasts").insert({
-        text: broadcastText,
-        status: "failed",
-        error: `LINE API error ${broadcastRes.status}`,
-      });
-      // Do not fail the whole order creation — the order is already saved.
-      return { ok: true, orderId: order.id, broadcast: "failed" as const };
-    }
-
-    await supabaseAdmin
-      .from("broadcasts")
-      .insert({ text: broadcastText, status: "sent" });
-
-    return { ok: true, orderId: order.id, broadcast: "sent" as const };
+    return { ok: true, orderId: order.id, broadcast: broadcastStatus };
   });
 
 // ============================================
