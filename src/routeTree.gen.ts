@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as BroadcastRouteImport } from './routes/broadcast'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as ApiPublicLineWebhookRouteImport } from './routes/api/public/line-webhook'
+import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,18 +35,26 @@ const ApiPublicLineWebhookRoute = ApiPublicLineWebhookRouteImport.update({
   path: '/api/public/line-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTelegramWebhookRoute =
+  ApiPublicTelegramWebhookRouteImport.update({
+    id: '/api/public/telegram/webhook',
+    path: '/api/public/telegram/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/broadcast': typeof BroadcastRoute
   '/planner': typeof PlannerRoute
   '/api/public/line-webhook': typeof ApiPublicLineWebhookRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/broadcast': typeof BroadcastRoute
   '/planner': typeof PlannerRoute
   '/api/public/line-webhook': typeof ApiPublicLineWebhookRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +62,30 @@ export interface FileRoutesById {
   '/broadcast': typeof BroadcastRoute
   '/planner': typeof PlannerRoute
   '/api/public/line-webhook': typeof ApiPublicLineWebhookRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/broadcast' | '/planner' | '/api/public/line-webhook'
+  fullPaths:
+    | '/'
+    | '/broadcast'
+    | '/planner'
+    | '/api/public/line-webhook'
+    | '/api/public/telegram/webhook'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/broadcast' | '/planner' | '/api/public/line-webhook'
-  id: '__root__' | '/' | '/broadcast' | '/planner' | '/api/public/line-webhook'
+  to:
+    | '/'
+    | '/broadcast'
+    | '/planner'
+    | '/api/public/line-webhook'
+    | '/api/public/telegram/webhook'
+  id:
+    | '__root__'
+    | '/'
+    | '/broadcast'
+    | '/planner'
+    | '/api/public/line-webhook'
+    | '/api/public/telegram/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +93,7 @@ export interface RootRouteChildren {
   BroadcastRoute: typeof BroadcastRoute
   PlannerRoute: typeof PlannerRoute
   ApiPublicLineWebhookRoute: typeof ApiPublicLineWebhookRoute
+  ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +126,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicLineWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/telegram/webhook': {
+      id: '/api/public/telegram/webhook'
+      path: '/api/public/telegram/webhook'
+      fullPath: '/api/public/telegram/webhook'
+      preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +141,7 @@ const rootRouteChildren: RootRouteChildren = {
   BroadcastRoute: BroadcastRoute,
   PlannerRoute: PlannerRoute,
   ApiPublicLineWebhookRoute: ApiPublicLineWebhookRoute,
+  ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

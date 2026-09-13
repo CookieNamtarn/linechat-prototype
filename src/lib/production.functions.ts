@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { sendFlexMessage, sendDowntimeAlert } from "@/lib/line.functions";
 
 // ============================================
 // Types
@@ -88,9 +87,6 @@ export const createProductionOrder = createServerFn({ method: "POST" })
       return `${day}T${hh}:${match[2]}:00+07:00`;
     };
 
-    const token = process.env["LINE_CHANNEL_ACCESS_TOKEN"];
-    if (!token) throw new Error("LINE Channel access token not configured");
-
     // 1. Create order in database
     const { data: order, error: orderError } = await supabaseAdmin
       .from("production_orders")
@@ -117,7 +113,7 @@ export const createProductionOrder = createServerFn({ method: "POST" })
     // 2. Get worker's LINE user ID
     const { data: worker } = await supabaseAdmin
       .from("workers")
-      .select("line_user_id, full_name")
+      .select("telegram_chat_id, full_name")
       .eq("id", data.workerId)
       .single();
 
@@ -135,7 +131,7 @@ export const createProductionOrder = createServerFn({ method: "POST" })
       .single();
 
     // 4. Build and send Flex Message to worker
-    if (worker?.line_user_id && product && machine) {
+    if (worker?.telegram_chat_id && product && machine) {
       const flexMessage = buildAssignedFlexMessage({
         orderId: order.id,
         orderNumber: order.order_number,
@@ -146,7 +142,7 @@ export const createProductionOrder = createServerFn({ method: "POST" })
         plannedEndTime: data.plannedEndTime,
       });
 
-      await sendFlexMessage(worker.line_user_id, flexMessage);
+      await sendWorkerMessage(worker.telegram_chat_id, flexMessage);
     }
 
     // 5. Broadcast the new order to all LINE OA followers
@@ -206,9 +202,6 @@ export const handleProductionAction = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }) => {
-    const token = process.env["LINE_CHANNEL_ACCESS_TOKEN"];
-    if (!token) throw new Error("LINE Channel access token not configured");
-
     const now = new Date().toISOString();
 
     // 1. Insert production event
@@ -254,12 +247,12 @@ export const handleProductionAction = createServerFn({ method: "POST" })
     // 4. Get worker's LINE user ID for Flex Message update
     const { data: worker } = await supabaseAdmin
       .from("workers")
-      .select("line_user_id, full_name")
+      .select("telegram_chat_id, full_name")
       .eq("id", order.worker_id)
       .single();
 
-    if (!worker?.line_user_id) {
-      return { ok: true, status: newStatus, warning: "Worker LINE ID not found" };
+    if (!worker?.telegram_chat_id) {
+      return { ok: true, status: newStatus, warning: "Worker Telegram chat ID not found" };
     }
 
     // 5. Get product and machine info
@@ -286,7 +279,7 @@ export const handleProductionAction = createServerFn({ method: "POST" })
         status: newStatus,
       });
 
-      await sendFlexMessage(worker.line_user_id, flexMessage);
+      await sendWorkerMessage(worker.telegram_chat_id, flexMessage);
     }
 
     return { ok: true, status: newStatus };
@@ -305,9 +298,6 @@ export const recordOutput = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }) => {
-    const token = process.env["LINE_CHANNEL_ACCESS_TOKEN"];
-    if (!token) throw new Error("LINE Channel access token not configured");
-
     const now = new Date().toISOString();
 
     // 1. Record output
@@ -346,7 +336,7 @@ export const recordOutput = createServerFn({ method: "POST" })
     if (order) {
       const { data: worker } = await supabaseAdmin
         .from("workers")
-        .select("line_user_id, full_name")
+        .select("telegram_chat_id, full_name")
         .eq("id", order.worker_id)
         .single();
 
@@ -369,7 +359,7 @@ export const recordOutput = createServerFn({ method: "POST" })
         .eq("event_type", "start")
         .single();
 
-      if (worker?.line_user_id && product && machine && lastEvent) {
+      if (worker?.telegram_chat_id && product && machine && lastEvent) {
         const startTime = new Date(lastEvent.event_time);
         const endTime = new Date(now);
         const durationMs = endTime.getTime() - startTime.getTime();
@@ -394,7 +384,7 @@ export const recordOutput = createServerFn({ method: "POST" })
           yield: yieldPct,
         });
 
-        await sendFlexMessage(worker.line_user_id, flexMessage);
+        await sendWorkerMessage(worker.telegram_chat_id, flexMessage);
       }
     }
 
@@ -414,9 +404,6 @@ export const reportDowntime = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }) => {
-    const token = process.env["LINE_CHANNEL_ACCESS_TOKEN"];
-    if (!token) throw new Error("LINE Channel access token not configured");
-
     const now = new Date().toISOString();
 
     // 1. Record downtime log
@@ -495,11 +482,11 @@ export const reportDowntime = createServerFn({ method: "POST" })
       // 5. Update worker's Flex Message to downtime state
       const { data: workerFull } = await supabaseAdmin
         .from("workers")
-        .select("line_user_id")
+        .select("telegram_chat_id")
         .eq("id", order.worker_id)
         .single();
 
-      if (workerFull?.line_user_id && product && machine) {
+      if (workerFull?.telegram_chat_id && product && machine) {
         const flexMessage = buildDowntimeFlexMessage({
           orderId: order.id,
           orderNumber: order.order_number,
@@ -509,7 +496,7 @@ export const reportDowntime = createServerFn({ method: "POST" })
           startTime: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
         });
 
-        await sendFlexMessage(workerFull.line_user_id, flexMessage);
+        await sendWorkerMessage(workerFull.telegram_chat_id, flexMessage);
       }
     }
 
@@ -526,9 +513,6 @@ export const resumeProduction = createServerFn({ method: "POST" })
     return data.orderId;
   })
   .handler(async ({ data: orderId }) => {
-    const token = process.env["LINE_CHANNEL_ACCESS_TOKEN"];
-    if (!token) throw new Error("LINE Channel access token not configured");
-
     const now = new Date().toISOString();
 
     // 1. Close the active downtime log
@@ -578,7 +562,7 @@ export const resumeProduction = createServerFn({ method: "POST" })
     if (order) {
       const { data: worker } = await supabaseAdmin
         .from("workers")
-        .select("line_user_id")
+        .select("telegram_chat_id")
         .eq("id", order.worker_id)
         .single();
 
@@ -594,7 +578,7 @@ export const resumeProduction = createServerFn({ method: "POST" })
         .eq("id", order.machine_id)
         .single();
 
-      if (worker?.line_user_id && product && machine) {
+      if (worker?.telegram_chat_id && product && machine) {
         const { data: startEvent } = await supabaseAdmin
           .from("production_events")
           .select("event_time")
@@ -619,7 +603,7 @@ export const resumeProduction = createServerFn({ method: "POST" })
           elapsedTime: elapsedStr,
         });
 
-        await sendFlexMessage(worker.line_user_id, flexMessage);
+        await sendWorkerMessage(worker.telegram_chat_id, flexMessage);
       }
     }
 
