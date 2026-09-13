@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Relationships: []
+      }
       broadcasts: {
         Row: {
           created_at: string
@@ -45,8 +63,9 @@ export type Database = {
           id: string
           last_message_at: string | null
           last_message_text: string | null
-          line_user_id: string
+          line_user_id: string | null
           picture_url: string | null
+          telegram_chat_id: string | null
           unread_count: number
         }
         Insert: {
@@ -55,8 +74,9 @@ export type Database = {
           id?: string
           last_message_at?: string | null
           last_message_text?: string | null
-          line_user_id: string
+          line_user_id?: string | null
           picture_url?: string | null
+          telegram_chat_id?: string | null
           unread_count?: number
         }
         Update: {
@@ -65,8 +85,9 @@ export type Database = {
           id?: string
           last_message_at?: string | null
           last_message_text?: string | null
-          line_user_id?: string
+          line_user_id?: string | null
           picture_url?: string | null
+          telegram_chat_id?: string | null
           unread_count?: number
         }
         Relationships: []
@@ -414,6 +435,7 @@ export type Database = {
           is_active: boolean
           line_user_id: string | null
           machine_id: string | null
+          telegram_chat_id: string | null
         }
         Insert: {
           created_at?: string
@@ -423,6 +445,7 @@ export type Database = {
           is_active?: boolean
           line_user_id?: string | null
           machine_id?: string | null
+          telegram_chat_id?: string | null
         }
         Update: {
           created_at?: string
@@ -432,6 +455,7 @@ export type Database = {
           is_active?: boolean
           line_user_id?: string | null
           machine_id?: string | null
+          telegram_chat_id?: string | null
         }
         Relationships: [
           {
