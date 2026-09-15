@@ -1145,3 +1145,53 @@ function buildDowntimeFlexMessage(data: {
     },
   };
 }
+
+/** ดึงข้อความทั้งหมดจากโครงสร้าง message แล้วส่งเข้า Telegram ของพนักงาน */
+function flattenText(node: unknown, out: string[] = []): string[] {
+  if (!node || typeof node !== "object") return out;
+  if (Array.isArray(node)) {
+    for (const item of node) flattenText(item, out);
+    return out;
+  }
+  const obj = node as Record<string, unknown>;
+  if (obj["type"] === "text" && typeof obj["text"] === "string") {
+    out.push(obj["text"]);
+  }
+  for (const key of ["header", "body", "footer", "contents"]) {
+    if (obj[key]) flattenText(obj[key], out);
+  }
+  return out;
+}
+
+async function sendWorkerMessage(
+  chatId: string,
+  message: unknown
+): Promise<void> {
+  const { sendTelegramMessage } = await import("@/lib/telegram.server");
+  let text: string;
+  if (typeof message === "string") {
+    text = message;
+  } else {
+    const lines = flattenText(message);
+    const obj = message as { altText?: string };
+    text = lines.length > 0 ? lines.join("\n") : (obj?.altText ?? "แจ้งเตือนการผลิต");
+  }
+  try {
+    await sendTelegramMessage(chatId, text);
+  } catch (e) {
+    console.error("Telegram worker message failed", e);
+  }
+}
+
+async function sendDowntimeAlert(data: {
+  machineName: string;
+  productName: string;
+  workerName: string;
+  reason: string;
+  reasonDetail?: string | undefined;
+  time: string;
+  orderNumber: string;
+}): Promise<void> {
+  const { sendDowntimeAlert: send } = await import("@/lib/telegram.server");
+  await send(data);
+}
