@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { replyToConversation, markConversationRead } from "@/lib/line.functions";
+import { replyToConversation, markConversationRead } from "@/lib/telegram.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { MessageCircle, Send, Megaphone, ClipboardList, User } from "lucide-react";
 import { toast } from "sonner";
@@ -10,17 +10,17 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "LINE OA Inbox — จัดการแชทลูกค้า" },
+      { title: "Telegram Inbox — จัดการแชทลูกค้า" },
       {
         name: "description",
         content:
-          "รับ-ตอบแชทลูกค้าจาก LINE Official Account แบบเรียลไทม์ และส่งข้อความกระจายถึงผู้ติดตามทั้งหมด",
+          "รับ-ตอบแชทลูกค้าจาก Telegram แบบเรียลไทม์ และส่งข้อความกระจายถึงผู้ติดตามทั้งหมด",
       },
-      { property: "og:title", content: "LINE OA Inbox — จัดการแชทลูกค้า" },
+      { property: "og:title", content: "Telegram Inbox — จัดการแชทลูกค้า" },
       {
         property: "og:description",
         content:
-          "รับ-ตอบแชทลูกค้าจาก LINE Official Account แบบเรียลไทม์ และส่งข้อความกระจายถึงผู้ติดตามทั้งหมด",
+          "รับ-ตอบแชทลูกค้าจาก Telegram แบบเรียลไทม์ และส่งข้อความกระจายถึงผู้ติดตามทั้งหมด",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -153,7 +153,7 @@ function Inbox() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#06C755]">
             <MessageCircle className="h-5 w-5 text-white" />
           </div>
-          <h1 className="text-lg font-semibold">LINE OA Inbox</h1>
+          <h1 className="text-lg font-semibold">Telegram Inbox</h1>
         </div>
         <Link
           to="/planner"
@@ -179,7 +179,7 @@ function Inbox() {
               <MessageCircle className="mb-2 h-10 w-10 opacity-40" />
               <p>ยังไม่มีการสนทนา</p>
               <p className="mt-1">
-                เมื่อมีลูกค้าทักเข้ามาทาง LINE OA การสนทนาจะแสดงที่นี่
+                เมื่อมีลูกค้าทักเข้ามาทาง Telegram การสนทนาจะแสดงที่นี่
               </p>
             </div>
           ) : (
@@ -194,7 +194,7 @@ function Inbox() {
                 {c.picture_url ? (
                   <img
                     src={c.picture_url}
-                    alt={c.display_name ?? "ผู้ใช้ LINE"}
+                    alt={c.display_name ?? "ผู้ใช้ Telegram"}
                     className="h-10 w-10 rounded-full object-cover"
                   />
                 ) : (
@@ -205,7 +205,7 @@ function Inbox() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate text-sm font-medium">
-                      {c.display_name ?? "ผู้ใช้ LINE"}
+                      {c.display_name ?? "ผู้ใช้ Telegram"}
                     </span>
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {timeLabel(c.last_message_at)}
@@ -239,7 +239,7 @@ function Inbox() {
                 {selected.picture_url ? (
                   <img
                     src={selected.picture_url}
-                    alt={selected.display_name ?? "ผู้ใช้ LINE"}
+                    alt={selected.display_name ?? "ผู้ใช้ Telegram"}
                     className="h-8 w-8 rounded-full object-cover"
                   />
                 ) : (
@@ -248,7 +248,7 @@ function Inbox() {
                   </div>
                 )}
                 <span className="font-medium">
-                  {selected.display_name ?? "ผู้ใช้ LINE"}
+                  {selected.display_name ?? "ผู้ใช้ Telegram"}
                 </span>
               </div>
 

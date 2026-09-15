@@ -2,7 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { sendBroadcast } from "@/lib/line.functions";
+import {
+  sendBroadcast,
+  getTelegramGroup,
+  setTelegramGroup,
+} from "@/lib/telegram.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Megaphone, Send } from "lucide-react";
 import { toast } from "sonner";
@@ -10,15 +14,15 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/broadcast")({
   head: () => ({
     meta: [
-      { title: "Broadcast — ส่งข้อความกระจาย LINE OA" },
+      { title: "Broadcast — ส่งข้อความกระจาย Telegram" },
       {
         name: "description",
-        content: "ส่งข้อความกระจายถึงผู้ติดตาม LINE Official Account ทั้งหมดพร้อมกัน",
+        content: "ส่งข้อความกระจายถึงผู้ติดตาม Telegram ทั้งหมดพร้อมกัน",
       },
-      { property: "og:title", content: "Broadcast — ส่งข้อความกระจาย LINE OA" },
+      { property: "og:title", content: "Broadcast — ส่งข้อความกระจาย Telegram" },
       {
         property: "og:description",
-        content: "ส่งข้อความกระจายถึงผู้ติดตาม LINE Official Account ทั้งหมดพร้อมกัน",
+        content: "ส่งข้อความกระจายถึงผู้ติดตาม Telegram ทั้งหมดพร้อมกัน",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -40,6 +44,31 @@ function BroadcastPage() {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const broadcastFn = useServerFn(sendBroadcast);
+  const getGroupFn = useServerFn(getTelegramGroup);
+  const setGroupFn = useServerFn(setTelegramGroup);
+  const [groupInput, setGroupInput] = useState("");
+  const [savingGroup, setSavingGroup] = useState(false);
+
+  const { data: group } = useQuery({
+    queryKey: ["telegram-group"],
+    queryFn: () => getGroupFn({}),
+  });
+
+  const saveGroup = async () => {
+    if (!groupInput.trim() || savingGroup) return;
+    setSavingGroup(true);
+    try {
+      await setGroupFn({ data: { chatId: groupInput.trim() } });
+      toast.success("บันทึกกลุ่มปลายทางแล้ว");
+      setGroupInput("");
+      queryClient.invalidateQueries({ queryKey: ["telegram-group"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "บันทึกไม่สำเร็จ");
+    } finally {
+      setSavingGroup(false);
+    }
+  };
+
 
   const { data: history = [] } = useQuery({
     queryKey: ["broadcasts"],
@@ -88,15 +117,44 @@ function BroadcastPage() {
 
       <main className="mx-auto max-w-2xl space-y-8 p-6">
         <section className="rounded-xl border bg-card p-5">
+          <h2 className="mb-2 text-sm font-semibold">กลุ่ม Telegram ปลายทาง</h2>
+          <p className="mb-3 text-xs text-muted-foreground">
+            เพิ่มบอทเข้ากลุ่ม แล้วพิมพ์ข้อความในกลุ่ม 1 ครั้ง ระบบจะจำรหัสกลุ่มให้อัตโนมัติ
+            หรือกรอกรหัสกลุ่มเอง (เช่น -1001234567890)
+          </p>
+          <div className="flex gap-2">
+            <input
+              value={groupInput}
+              onChange={(e) => setGroupInput(e.target.value)}
+              placeholder="-1001234567890"
+              className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#06C755]/50"
+            />
+            <button
+              onClick={saveGroup}
+              disabled={savingGroup || !groupInput.trim()}
+              className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-40"
+            >
+              {savingGroup ? "กำลังบันทึก..." : "บันทึก"}
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            สถานะ:{" "}
+            {group?.chatId
+              ? `ตั้งค่ากลุ่มแล้ว (${group.chatId})`
+              : "ยังไม่ได้ตั้งค่ากลุ่ม"}
+          </p>
+        </section>
+
+        <section className="rounded-xl border bg-card p-5">
           <label className="mb-2 block text-sm font-medium">
-            ข้อความถึงผู้ติดตามทั้งหมด
+            ข้อความถึงกลุ่ม Telegram
           </label>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={5}
             maxLength={5000}
-            placeholder="พิมพ์ข้อความที่ต้องการส่งถึงผู้ติดตาม LINE OA ทุกคน..."
+            placeholder="พิมพ์ข้อความที่ต้องการส่งถึงผู้ติดตาม Telegram ทุกคน..."
             className="w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#06C755]/50"
           />
           <div className="mt-3 flex items-center justify-between">
