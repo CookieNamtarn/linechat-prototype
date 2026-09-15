@@ -78,23 +78,16 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         const isGroup =
           message.chat.type === "group" || message.chat.type === "supergroup";
 
-        // จำกลุ่มแรกที่บอทได้รับข้อความ เพื่อใช้เป็นปลายทางของการส่งกระจาย
+        // อัปเดตรหัสกลุ่มทุกครั้งที่ได้รับข้อความจากกลุ่ม — ไม่จำกัดครั้งแรก
         if (isGroup) {
-          const { data: existingSetting } = await supabaseAdmin
-            .from("app_settings")
-            .select("value")
-            .eq("key", "telegram_group_chat_id")
-            .maybeSingle();
-          if (!existingSetting?.value) {
-            await supabaseAdmin.from("app_settings").upsert(
-              {
-                key: "telegram_group_chat_id",
-                value: chatId,
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: "key" }
-            );
-          }
+          await supabaseAdmin.from("app_settings").upsert(
+            {
+              key: "telegram_group_chat_id",
+              value: chatId,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "key" }
+          );
           return Response.json({ ok: true, group: true });
         }
 
