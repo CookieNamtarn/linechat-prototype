@@ -78,17 +78,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "LINE OA Inbox — จัดการแชทลูกค้า" },
+      { title: "Telegram Inbox — จัดการแชทลูกค้า" },
       {
         name: "description",
         content:
-          "รับ-ตอบแชทลูกค้าจาก LINE Official Account แบบเรียลไทม์ และส่งข้อความกระจายถึงผู้ติดตามทั้งหมด",
+          "รับ-ตอบแชทลูกค้าจาก Telegram แบบเรียลไทม์ และส่งข้อความกระจายถึงผู้ติดตามทั้งหมด",
       },
-      { property: "og:title", content: "LINE OA Inbox — จัดการแชทลูกค้า" },
+      { property: "og:title", content: "Telegram Inbox — จัดการแชทลูกค้า" },
       {
         property: "og:description",
         content:
-          "รับ-ตอบแชทลูกค้าจาก LINE Official Account แบบเรียลไทม์ และส่งข้อความกระจายถึงผู้ติดตามทั้งหมด",
+          "รับ-ตอบแชทลูกค้าจาก Telegram แบบเรียลไทม์ และส่งข้อความกระจายถึงผู้ติดตามทั้งหมด",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

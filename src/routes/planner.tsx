@@ -30,7 +30,7 @@ export const Route = createFileRoute("/planner")({
       { title: "Planner Dashboard — สั่งงานผลิต" },
       {
         name: "description",
-        content: "หน้าสั่งงานผลิต สร้างคำสั่งผลิตและส่งให้พนักงานผ่าน LINE OA",
+        content: "หน้าสั่งงานผลิต สร้างคำสั่งผลิตและส่งให้พนักงานผ่าน Telegram",
       },
     ],
   }),
@@ -327,7 +327,7 @@ function PlannerDashboard() {
           <h1 className="text-lg font-semibold">Planner Dashboard</h1>
         </div>
         <div className="text-sm text-muted-foreground">
-          สั่งงานผลิตผ่าน LINE OA
+          สั่งงานผลิตผ่าน Telegram
         </div>
       </header>
 

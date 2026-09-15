@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { sendBroadcast } from "@/lib/line.functions";
+import { sendBroadcast } from "@/lib/telegram.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Megaphone, Send } from "lucide-react";
 import { toast } from "sonner";
@@ -10,15 +10,15 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/broadcast")({
   head: () => ({
     meta: [
-      { title: "Broadcast — ส่งข้อความกระจาย LINE OA" },
+      { title: "Broadcast — ส่งข้อความกระจาย Telegram" },
       {
         name: "description",
-        content: "ส่งข้อความกระจายถึงผู้ติดตาม LINE Official Account ทั้งหมดพร้อมกัน",
+        content: "ส่งข้อความกระจายถึงผู้ติดตาม Telegram ทั้งหมดพร้อมกัน",
       },
-      { property: "og:title", content: "Broadcast — ส่งข้อความกระจาย LINE OA" },
+      { property: "og:title", content: "Broadcast — ส่งข้อความกระจาย Telegram" },
       {
         property: "og:description",
-        content: "ส่งข้อความกระจายถึงผู้ติดตาม LINE Official Account ทั้งหมดพร้อมกัน",
+        content: "ส่งข้อความกระจายถึงผู้ติดตาม Telegram ทั้งหมดพร้อมกัน",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -96,7 +96,7 @@ function BroadcastPage() {
             onChange={(e) => setText(e.target.value)}
             rows={5}
             maxLength={5000}
-            placeholder="พิมพ์ข้อความที่ต้องการส่งถึงผู้ติดตาม LINE OA ทุกคน..."
+            placeholder="พิมพ์ข้อความที่ต้องการส่งถึงผู้ติดตาม Telegram ทุกคน..."
             className="w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#06C755]/50"
           />
           <div className="mt-3 flex items-center justify-between">
