@@ -31,13 +31,13 @@ export async function telegramCall<T = unknown>(
   if (!res.ok) {
     const errText = await res.text();
     console.error(`Telegram ${method} failed [${res.status}]: ${errText}`);
-    throw new Error(`ส่งคำสั่งไป Telegram ไม่สำเร็จ (${res.status})`);
+    throw new Error(`ส่งคำสั่มไป Telegram ไม่สำเร็จ (${res.status})`);
   }
 
   const json = (await res.json()) as TelegramResponse<T>;
   if (!json.ok) {
     console.error(`Telegram ${method} error: ${json.description ?? "unknown"}`);
-    throw new Error(json.description ?? "Telegram API error");
+    throw new Error(`Telegram: ${json.description ?? "unknown error"}`);
   }
   return json.result as T;
 }
@@ -69,7 +69,14 @@ export async function setGroupChatIdValue(chatId: string): Promise<void> {
     );
 }
 
-/** ส่งข้อความเข้ากลุ่ม Telegram ที่ตั้งไว้ พร้อมบันทึกประวัติ */
+export async function clearGroupChatId(): Promise<void> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await supabaseAdmin
+    .from("app_settings")
+    .update({ value: null, updated_at: new Date().toISOString() })
+    .eq("key", GROUP_CHAT_SETTING_KEY);
+}
+
 export async function broadcastToGroup(text: string): Promise<"sent" | "failed"> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const chatId = await getGroupChatId();
@@ -86,10 +93,11 @@ export async function broadcastToGroup(text: string): Promise<"sent" | "failed">
     await supabaseAdmin.from("broadcasts").insert({ text, status: "sent" });
     return "sent";
   } catch (e) {
+    const reason = e instanceof Error ? e.message : String(e);
     await supabaseAdmin.from("broadcasts").insert({
       text,
       status: "failed",
-      error: e instanceof Error ? e.message : "unknown error",
+      error: reason,
     });
     return "failed";
   }

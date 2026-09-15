@@ -95,3 +95,31 @@ export const setTelegramGroup = createServerFn({ method: "POST" })
     await setGroupChatIdValue(data.chatId);
     return { ok: true, chatId: data.chatId };
   });
+
+export const testGroupMessage = createServerFn({ method: "POST" })
+  .inputValidator((data: { chatId: string }) => {
+    const chatId = data.chatId?.trim();
+    if (!chatId) throw new Error("กรุณากรอกรหัสกลุ่ม");
+    if (!/^-?\d+$/.test(chatId)) throw new Error("รหัสกลุ่มต้องเป็นตัวเลข เช่น -1001234567890");
+    return { chatId };
+  })
+  .handler(async ({ data }) => {
+    const { sendTelegramMessage, setGroupChatIdValue } = await import("@/lib/telegram.server");
+    try {
+      await sendTelegramMessage(data.chatId, "✅ ทดสอบส่งข้อความสำเร็จ!");
+      // บันทึกรหัสกลุ่มอัตโนมัติเมื่อส่งสำเร็จ
+      await setGroupChatIdValue(data.chatId);
+      return { ok: true };
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : String(e);
+      throw new Error(`ส่งไม่สำเร็จ: ${reason}`);
+    }
+  });
+
+export const clearTelegramGroup = createServerFn({ method: "POST" }).handler(
+  async () => {
+    const { clearGroupChatId } = await import("@/lib/telegram.server");
+    await clearGroupChatId();
+    return { ok: true };
+  }
+);

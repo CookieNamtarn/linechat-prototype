@@ -152,7 +152,7 @@ function PlannerDashboard() {
         .padStart(3, "0");
       const orderNumber = `ORD-${dateStr}-${random}`;
 
-      await createOrderFn({
+      const result = await createOrderFn({
         data: {
           orderNumber,
           productId: selectedProduct,
@@ -166,7 +166,14 @@ function PlannerDashboard() {
         },
       });
 
-      toast.success(`ส่งคำสั่งผลิต ${orderNumber} สำเร็จ!`);
+      // แยกกรณี: คำสั่งผลิตถูกบันทึกแล้ว แต่ประกาศอาจล้มเหลว
+      if (result.broadcast === "failed") {
+        toast.warning(
+          `คำสั่งผลิต ${orderNumber} ถูกบันทึกแล้ว แต่ประกาศเข้ากลุ่มไม่สำเร็จ — ตรวจสอบรหัสกลุ่มปลายทาง`
+        );
+      } else {
+        toast.success(`ส่งคำสั่งผลิต ${orderNumber} สำเร็จ!`);
+      }
 
       // Reset form
       setSelectedProduct("");
@@ -198,7 +205,7 @@ function PlannerDashboard() {
         .padStart(3, "0");
       const orderNumber = `ORD-${dateStr}-${random}`;
 
-      await createOrderFn({
+      const result = await createOrderFn({
         data: {
           orderNumber,
           productId: template.product_id,
@@ -212,7 +219,14 @@ function PlannerDashboard() {
         },
       });
 
-      toast.success(`ส่ง ${template.template_name} สำเร็จ!`);
+      // แยกกรณี: คำสั่งผลิตถูกบันทึกแล้ว แต่ประกาศอาจล้มเหลว
+      if (result.broadcast === "failed") {
+        toast.warning(
+          `${template.template_name} ถูกบันทึกแล้ว แต่ประกาศเข้ากลุ่มไม่สำเร็จ — ตรวจสอบรหัสกลุ่มปลายทาง`
+        );
+      } else {
+        toast.success(`ส่ง ${template.template_name} สำเร็จ!`);
+      }
       queryClient.invalidateQueries({ queryKey: ["activeOrders"] });
       queryClient.invalidateQueries({ queryKey: ["ordersHistory"] });
     } catch (e) {
