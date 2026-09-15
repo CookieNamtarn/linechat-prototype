@@ -44,6 +44,31 @@ function BroadcastPage() {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const broadcastFn = useServerFn(sendBroadcast);
+  const getGroupFn = useServerFn(getTelegramGroup);
+  const setGroupFn = useServerFn(setTelegramGroup);
+  const [groupInput, setGroupInput] = useState("");
+  const [savingGroup, setSavingGroup] = useState(false);
+
+  const { data: group } = useQuery({
+    queryKey: ["telegram-group"],
+    queryFn: () => getGroupFn({}),
+  });
+
+  const saveGroup = async () => {
+    if (!groupInput.trim() || savingGroup) return;
+    setSavingGroup(true);
+    try {
+      await setGroupFn({ data: { chatId: groupInput.trim() } });
+      toast.success("บันทึกกลุ่มปลายทางแล้ว");
+      setGroupInput("");
+      queryClient.invalidateQueries({ queryKey: ["telegram-group"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "บันทึกไม่สำเร็จ");
+    } finally {
+      setSavingGroup(false);
+    }
+  };
+
 
   const { data: history = [] } = useQuery({
     queryKey: ["broadcasts"],
