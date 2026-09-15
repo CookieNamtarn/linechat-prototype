@@ -75,8 +75,6 @@ export const createProductionOrder = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data }) => {
-    // Accept "HH:MM" time-only values from the planner form and turn them
-    // into a full timestamp on today's date (Asia/Bangkok, UTC+7).
     const toTimestamp = (value: string | undefined): string | null => {
       if (!value) return null;
       const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
@@ -110,14 +108,14 @@ export const createProductionOrder = createServerFn({ method: "POST" })
       throw new Error("Failed to create production order");
     }
 
-    // 2. Get worker's LINE user ID
+    // 2. Get worker info
     const { data: worker } = await supabaseAdmin
       .from("workers")
       .select("telegram_chat_id, full_name")
       .eq("id", data.workerId)
       .single();
 
-    // 3. Get product and machine info for the Flex Message
+    // 3. Get product and machine info
     const { data: product } = await supabaseAdmin
       .from("products")
       .select("product_name")
@@ -130,10 +128,9 @@ export const createProductionOrder = createServerFn({ method: "POST" })
       .eq("id", data.machineId)
       .single();
 
-    // 4. Build and send Flex Message to worker
+    // 4. Send plain text message to worker
     if (worker?.telegram_chat_id && product && machine) {
-      const flexMessage = buildAssignedFlexMessage({
-        orderId: order.id,
+      const msg = buildAssignedMessage({
         orderNumber: order.order_number,
         productName: product.product_name,
         machineName: machine.machine_name,
@@ -141,11 +138,10 @@ export const createProductionOrder = createServerFn({ method: "POST" })
         plannedStartTime: data.plannedStartTime,
         plannedEndTime: data.plannedEndTime,
       });
-
-      await sendWorkerMessage(worker.telegram_chat_id, flexMessage);
+      await sendWorkerMessage(worker.telegram_chat_id, msg);
     }
 
-    // 5. ส่งประกาศคำสั่งผลิตใหม่เข้ากลุ่ม Telegram
+    // 5. Broadcast to group
     const broadcastText =
       `📋 คำสั่งผลิตใหม่\n` +
       `────────────────────\n` +
@@ -180,7 +176,6 @@ export const handleProductionAction = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const now = new Date().toISOString();
 
-    // 1. Insert production event
     const { error: eventError } = await supabaseAdmin
       .from("production_events")
       .insert({
@@ -195,7 +190,6 @@ export const handleProductionAction = createServerFn({ method: "POST" })
       throw new Error("Failed to record production event");
     }
 
-    // 2. Determine new status based on event
     const statusMap: Record<string, ProductionOrder["status"]> = {
       start: "in_progress",
       pause: "downtime",
@@ -207,7 +201,6 @@ export const handleProductionAction = createServerFn({ method: "POST" })
     const newStatus = statusMap[data.eventType];
     if (!newStatus) throw new Error("Invalid event type");
 
-    // 3. Update order status
     const { data: order, error: updateError } = await supabaseAdmin
       .from("production_orders")
       .update({ status: newStatus, updated_at: now })
@@ -220,7 +213,6 @@ export const handleProductionAction = createServerFn({ method: "POST" })
       throw new Error("Failed to update order status");
     }
 
-    // 4. Get worker's LINE user ID for Flex Message update
     const { data: worker } = await supabaseAdmin
       .from("workers")
       .select("telegram_chat_id, full_name")
@@ -231,7 +223,6 @@ export const handleProductionAction = createServerFn({ method: "POST" })
       return { ok: true, status: newStatus, warning: "Worker Telegram chat ID not found" };
     }
 
-    // 5. Get product and machine info
     const { data: product } = await supabaseAdmin
       .from("products")
       .select("product_name")
@@ -244,18 +235,15 @@ export const handleProductionAction = createServerFn({ method: "POST" })
       .eq("id", order.machine_id)
       .single();
 
-    // 6. Send appropriate Flex Message based on new state
     if (product && machine) {
-      const flexMessage = buildStateFlexMessage({
-        orderId: order.id,
+      const msg = buildStatusMessage({
         orderNumber: order.order_number,
         productName: product.product_name,
         machineName: machine.machine_name,
         plannedQuantity: order.planned_quantity,
         status: newStatus,
       });
-
-      await sendWorkerMessage(worker.telegram_chat_id, flexMessage);
+      await sendWorkerMessage(worker.telegram_chat_id, msg);
     }
 
     return { ok: true, status: newStatus };
@@ -276,7 +264,6 @@ export const recordOutput = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const now = new Date().toISOString();
 
-    // 1. Record output
     const { error: outputError } = await supabaseAdmin
       .from("production_outputs")
       .insert({
@@ -291,7 +278,6 @@ export const recordOutput = createServerFn({ method: "POST" })
       throw new Error("Failed to record output");
     }
 
-    // 2. Mark event as complete
     await supabaseAdmin
       .from("production_events")
       .insert({
@@ -300,7 +286,6 @@ export const recordOutput = createServerFn({ method: "POST" })
         event_time: now,
       });
 
-    // 3. Update order status to completed
     const { data: order } = await supabaseAdmin
       .from("production_orders")
       .update({ status: "completed", updated_at: now })
@@ -308,7 +293,6 @@ export const recordOutput = createServerFn({ method: "POST" })
       .select("*")
       .single();
 
-    // 4. Send completion Flex Message
     if (order) {
       const { data: worker } = await supabaseAdmin
         .from("workers")
@@ -346,8 +330,7 @@ export const recordOutput = createServerFn({ method: "POST" })
 
         const yieldPct = ((data.okQty / (data.okQty + data.ngQty)) * 100).toFixed(1);
 
-        const flexMessage = buildCompletedFlexMessage({
-          orderId: order.id,
+        const msg = buildCompletedMessage({
           orderNumber: order.order_number,
           productName: product.product_name,
           machineName: machine.machine_name,
@@ -360,7 +343,7 @@ export const recordOutput = createServerFn({ method: "POST" })
           yield: yieldPct,
         });
 
-        await sendWorkerMessage(worker.telegram_chat_id, flexMessage);
+        await sendWorkerMessage(worker.telegram_chat_id, msg);
       }
     }
 
@@ -382,7 +365,6 @@ export const reportDowntime = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const now = new Date().toISOString();
 
-    // 1. Record downtime log
     const { data: downtime, error: downtimeError } = await supabaseAdmin
       .from("downtime_logs")
       .insert({
@@ -399,7 +381,6 @@ export const reportDowntime = createServerFn({ method: "POST" })
       throw new Error("Failed to record downtime");
     }
 
-    // 2. Insert production event (pause)
     await supabaseAdmin
       .from("production_events")
       .insert({
@@ -408,7 +389,6 @@ export const reportDowntime = createServerFn({ method: "POST" })
         event_time: now,
       });
 
-    // 3. Update order status
     const { data: order } = await supabaseAdmin
       .from("production_orders")
       .update({ status: "downtime", updated_at: now })
@@ -416,7 +396,6 @@ export const reportDowntime = createServerFn({ method: "POST" })
       .select("*")
       .single();
 
-    // 4. Send admin group alert
     if (order) {
       const { data: worker } = await supabaseAdmin
         .from("workers")
@@ -455,7 +434,7 @@ export const reportDowntime = createServerFn({ method: "POST" })
         orderNumber: order.order_number,
       });
 
-      // 5. Update worker's Flex Message to downtime state
+      // Update worker's message to downtime state
       const { data: workerFull } = await supabaseAdmin
         .from("workers")
         .select("telegram_chat_id")
@@ -463,16 +442,14 @@ export const reportDowntime = createServerFn({ method: "POST" })
         .single();
 
       if (workerFull?.telegram_chat_id && product && machine) {
-        const flexMessage = buildDowntimeFlexMessage({
-          orderId: order.id,
+        const msg = buildDowntimeMessage({
           orderNumber: order.order_number,
           productName: product.product_name,
           machineName: machine.machine_name,
           reason: reasonLabels[data.reason] || data.reason,
           startTime: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
         });
-
-        await sendWorkerMessage(workerFull.telegram_chat_id, flexMessage);
+        await sendWorkerMessage(workerFull.telegram_chat_id, msg);
       }
     }
 
@@ -491,7 +468,6 @@ export const resumeProduction = createServerFn({ method: "POST" })
   .handler(async ({ data: orderId }) => {
     const now = new Date().toISOString();
 
-    // 1. Close the active downtime log
     const { data: activeDowntime } = await supabaseAdmin
       .from("downtime_logs")
       .select("*")
@@ -513,7 +489,6 @@ export const resumeProduction = createServerFn({ method: "POST" })
         .eq("id", activeDowntime.id);
     }
 
-    // 2. Insert resume event
     await supabaseAdmin
       .from("production_events")
       .insert({
@@ -522,13 +497,11 @@ export const resumeProduction = createServerFn({ method: "POST" })
         event_time: now,
       });
 
-    // 3. Update order status
     await supabaseAdmin
       .from("production_orders")
       .update({ status: "in_progress", updated_at: now })
       .eq("id", orderId);
 
-    // 4. Send updated Flex Message to worker
     const { data: order } = await supabaseAdmin
       .from("production_orders")
       .select("*")
@@ -569,8 +542,7 @@ export const resumeProduction = createServerFn({ method: "POST" })
         const secs = Math.floor((elapsed % 60000) / 1000);
         const elapsedStr = `${hours}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 
-        const flexMessage = buildInProgressFlexMessage({
-          orderId: order.id,
+        const msg = buildInProgressMessage({
           orderNumber: order.order_number,
           productName: product.product_name,
           machineName: machine.machine_name,
@@ -578,8 +550,7 @@ export const resumeProduction = createServerFn({ method: "POST" })
           startTime: startTime.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
           elapsedTime: elapsedStr,
         });
-
-        await sendWorkerMessage(worker.telegram_chat_id, flexMessage);
+        await sendWorkerMessage(worker.telegram_chat_id, msg);
       }
     }
 
@@ -587,299 +558,77 @@ export const resumeProduction = createServerFn({ method: "POST" })
   });
 
 // ============================================
-// Flex Message Builders
+// Plain Text Message Builders (Telegram)
 // ============================================
 
-type FlexMessageData = {
-  orderId: string;
+function buildAssignedMessage(data: {
   orderNumber: string;
   productName: string;
   machineName: string;
   plannedQuantity: number;
   plannedStartTime?: string | undefined;
   plannedEndTime?: string | undefined;
-};
+}): string {
+  return (
+    `📋 คำสั่งผลิตใหม่\n` +
+    `────────────────────\n` +
+    `Order: ${data.orderNumber}\n` +
+    `สินค้า: ${data.productName}\n` +
+    `เครื่อง: ${data.machineName}\n` +
+    `จำนวน: ${data.plannedQuantity.toLocaleString()} pcs\n` +
+    (data.plannedStartTime ? `เริ่ม: ${data.plannedStartTime} น.\n` : "") +
+    (data.plannedEndTime ? `เสร็จ: ${data.plannedEndTime} น.\n` : "") +
+    `────────────────────`
+  );
+}
 
-function buildAssignedFlexMessage(data: FlexMessageData) {
-  const liffId = process.env["LINE_LIFF_ID"] || "{LIFF_ID}";
-  return {
-    type: "flex",
-    altText: `คำสั่งผลิตใหม่: ${data.productName}`,
-    contents: {
-      type: "bubble",
-      header: {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "text",
-            text: "📋 คำสั่งผลิตใหม่",
-            weight: "bold",
-            size: "lg",
-            color: "#1A73E8",
-          },
-        ],
-        backgroundColor: "#E8F0FE",
-      },
-      body: {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "box",
-            layout: "vertical",
-            contents: [
-              { type: "text", text: "Order", size: "xs", color: "#666666" },
-              { type: "text", text: data.orderNumber, weight: "bold", size: "sm" },
-            ],
-            margin: "md",
-          },
-          {
-            type: "box",
-            layout: "vertical",
-            contents: [
-              { type: "text", text: "สินค้า", size: "xs", color: "#666666" },
-              { type: "text", text: data.productName, weight: "bold", size: "md" },
-            ],
-            margin: "sm",
-          },
-          {
-            type: "box",
-            layout: "horizontal",
-            contents: [
-              {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                  { type: "text", text: "จำนวน", size: "xs", color: "#666666" },
-                  { type: "text", text: `${data.plannedQuantity.toLocaleString()} pcs`, weight: "bold" },
-                ],
-                flex: 1,
-              },
-              {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                  { type: "text", text: "เครื่อง", size: "xs", color: "#666666" },
-                  { type: "text", text: data.machineName, weight: "bold" },
-                ],
-                flex: 1,
-              },
-            ],
-            margin: "sm",
-          },
-          {
-            type: "separator",
-            margin: "lg",
-          },
-          {
-            type: "text",
-            text: "กดปุ่มเพื่อเริ่มผลิต",
-            size: "sm",
-            color: "#666666",
-            align: "center",
-            margin: "md",
-          },
-        ],
-      },
-      footer: {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "button",
-            action: {
-              type: "postback",
-              label: "▶️ เริ่มผลิต",
-              data: `action=start&order_id=${data.orderId}`,
-              displayText: "เริ่มผลิต",
-            },
-            style: "primary",
-            color: "#06C755",
-          },
-          {
-            type: "button",
-            action: {
-              type: "uri",
-              label: "⚠️ แจ้งปัญหา",
-              uri: `https://liff.line.me/${liffId}/downtime?order_id=${data.orderId}`,
-            },
-            style: "secondary",
-            margin: "md",
-          },
-        ],
-      },
-    },
+function buildStatusMessage(data: {
+  orderNumber: string;
+  productName: string;
+  machineName: string;
+  plannedQuantity: number;
+  status: ProductionOrder["status"];
+}): string {
+  const statusLabels: Record<string, string> = {
+    assigned: "📋 รับคำสั่งผลิต",
+    in_progress: "🔄 กำลังผลิต",
+    downtime: "⚠️ หยุดผลิตชั่วคราว",
+    completed: "✅ ผลิตเสร็จสิ้น",
+    cancelled: "❌ ยกเลิก",
   };
+  return (
+    `${statusLabels[data.status] ?? data.status}\n` +
+    `────────────────────\n` +
+    `Order: ${data.orderNumber}\n` +
+    `สินค้า: ${data.productName}\n` +
+    `เครื่อง: ${data.machineName}\n` +
+    `จำนวน: ${data.plannedQuantity.toLocaleString()} pcs\n` +
+    `────────────────────`
+  );
 }
 
-function buildStateFlexMessage(data: FlexMessageData & { status: ProductionOrder["status"] }) {
-  switch (data.status) {
-    case "in_progress":
-      return buildInProgressFlexMessage({
-        ...data,
-        startTime: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
-        elapsedTime: "0:00:00",
-      });
-    case "completed":
-      return buildCompletedFlexMessage({
-        ...data,
-        startTime: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
-        endTime: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
-        duration: "0:00:00",
-        okQty: 0,
-        ngQty: 0,
-        yield: "0",
-      });
-    case "downtime":
-      return buildDowntimeFlexMessage({
-        ...data,
-        reason: "Unknown",
-        startTime: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
-      });
-    default:
-      return buildAssignedFlexMessage(data);
-  }
-}
-
-function buildInProgressFlexMessage(data: {
-  orderId: string;
+function buildInProgressMessage(data: {
   orderNumber: string;
   productName: string;
   machineName: string;
   plannedQuantity: number;
   startTime: string;
   elapsedTime: string;
-}) {
-  const liffId = process.env["LINE_LIFF_ID"] || "{LIFF_ID}";
-  return {
-    type: "flex",
-    altText: `กำลังผลิต: ${data.productName}`,
-    contents: {
-      type: "bubble",
-      header: {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "text",
-            text: "🔄 กำลังผลิต",
-            weight: "bold",
-            size: "lg",
-            color: "#FFFFFF",
-          },
-        ],
-        backgroundColor: "#1A73E8",
-      },
-      body: {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "box",
-            layout: "vertical",
-            contents: [
-              { type: "text", text: "สินค้า", size: "xs", color: "#666666" },
-              { type: "text", text: data.productName, weight: "bold", size: "md" },
-            ],
-            margin: "md",
-          },
-          {
-            type: "box",
-            layout: "horizontal",
-            contents: [
-              {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                  { type: "text", text: "จำนวน", size: "xs", color: "#666666" },
-                  { type: "text", text: `${data.plannedQuantity.toLocaleString()} pcs`, weight: "bold" },
-                ],
-                flex: 1,
-              },
-              {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                  { type: "text", text: "เครื่อง", size: "xs", color: "#666666" },
-                  { type: "text", text: data.machineName, weight: "bold" },
-                ],
-                flex: 1,
-              },
-            ],
-            margin: "sm",
-          },
-          {
-            type: "box",
-            layout: "horizontal",
-            contents: [
-              {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                  { type: "text", text: "เวลาเริ่ม", size: "xs", color: "#666666" },
-                  { type: "text", text: data.startTime, weight: "bold", color: "#06C755" },
-                ],
-                flex: 1,
-              },
-              {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                  { type: "text", text: "เวลาผ่านไป", size: "xs", color: "#666666" },
-                  { type: "text", text: data.elapsedTime, weight: "bold", color: "#1A73E8" },
-                ],
-                flex: 1,
-              },
-            ],
-            margin: "sm",
-          },
-          {
-            type: "separator",
-            margin: "lg",
-          },
-          {
-            type: "text",
-            text: "กดปุ่มเมื่อผลิตเสร็จ",
-            size: "sm",
-            color: "#666666",
-            align: "center",
-            margin: "md",
-          },
-        ],
-      },
-      footer: {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "button",
-            action: {
-              type: "uri",
-              label: "✅ ผลิตเสร็จสิ้น",
-              uri: `https://liff.line.me/${liffId}/complete?order_id=${data.orderId}`,
-            },
-            style: "primary",
-            color: "#06C755",
-          },
-          {
-            type: "button",
-            action: {
-              type: "uri",
-              label: "⚠️ แจ้งปัญหา",
-              uri: `https://liff.line.me/${liffId}/downtime?order_id=${data.orderId}`,
-            },
-            style: "secondary",
-            margin: "md",
-          },
-        ],
-      },
-    },
-  };
+}): string {
+  return (
+    `🔄 กำลังผลิต\n` +
+    `────────────────────\n` +
+    `Order: ${data.orderNumber}\n` +
+    `สินค้า: ${data.productName}\n` +
+    `เครื่อง: ${data.machineName}\n` +
+    `จำนวน: ${data.plannedQuantity.toLocaleString()} pcs\n` +
+    `เริ่ม: ${data.startTime} น.\n` +
+    `เวลาผ่านไป: ${data.elapsedTime}\n` +
+    `────────────────────`
+  );
 }
 
-function buildCompletedFlexMessage(data: {
-  orderId: string;
+function buildCompletedMessage(data: {
   orderNumber: string;
   productName: string;
   machineName: string;
@@ -890,292 +639,51 @@ function buildCompletedFlexMessage(data: {
   okQty: number;
   ngQty: number;
   yield: string;
-}) {
-  return {
-    type: "flex",
-    altText: `ผลิตเสร็จแล้ว: ${data.productName}`,
-    contents: {
-      type: "bubble",
-      header: {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "text",
-            text: "✅ ผลิตเสร็จสิ้น",
-            weight: "bold",
-            size: "lg",
-            color: "#FFFFFF",
-          },
-        ],
-        backgroundColor: "#06C755",
-      },
-      body: {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "box",
-            layout: "vertical",
-            contents: [
-              { type: "text", text: "สินค้า", size: "xs", color: "#666666" },
-              { type: "text", text: data.productName, weight: "bold", size: "md" },
-            ],
-            margin: "md",
-          },
-          {
-            type: "box",
-            layout: "horizontal",
-            contents: [
-              {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                  { type: "text", text: "เวลาเริ่ม", size: "xs", color: "#666666" },
-                  { type: "text", text: data.startTime },
-                ],
-                flex: 1,
-              },
-              {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                  { type: "text", text: "เวลาจบ", size: "xs", color: "#666666" },
-                  { type: "text", text: data.endTime },
-                ],
-                flex: 1,
-              },
-            ],
-            margin: "sm",
-          },
-          {
-            type: "box",
-            layout: "horizontal",
-            contents: [
-              {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                  { type: "text", text: "รวมเวลา", size: "xs", color: "#666666" },
-                  { type: "text", text: data.duration },
-                ],
-                flex: 1,
-              },
-              {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                  { type: "text", text: "จำนวน", size: "xs", color: "#666666" },
-                  { type: "text", text: `${data.plannedQuantity.toLocaleString()} pcs` },
-                ],
-                flex: 1,
-              },
-            ],
-            margin: "sm",
-          },
-          {
-            type: "separator",
-            margin: "md",
-          },
-          {
-            type: "box",
-            layout: "horizontal",
-            contents: [
-              {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                  { type: "text", text: "OK", size: "xs", color: "#666666" },
-                  { type: "text", text: data.okQty.toLocaleString(), weight: "bold", size: "lg", color: "#06C755" },
-                ],
-                flex: 1,
-                alignItems: "center",
-              },
-              {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                  { type: "text", text: "NG", size: "xs", color: "#666666" },
-                  { type: "text", text: data.ngQty.toLocaleString(), weight: "bold", size: "lg", color: "#EA4335" },
-                ],
-                flex: 1,
-                alignItems: "center",
-              },
-              {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                  { type: "text", text: "Yield", size: "xs", color: "#666666" },
-                  { type: "text", text: `${data.yield}%`, weight: "bold", size: "lg", color: "#1A73E8" },
-                ],
-                flex: 1,
-                alignItems: "center",
-              },
-            ],
-            margin: "md",
-          },
-        ],
-      },
-    },
-  };
+}): string {
+  return (
+    `✅ ผลิตเสร็จสิ้น\n` +
+    `────────────────────\n` +
+    `Order: ${data.orderNumber}\n` +
+    `สินค้า: ${data.productName}\n` +
+    `เครื่อง: ${data.machineName}\n` +
+    `จำนวน: ${data.plannedQuantity.toLocaleString()} pcs\n` +
+    `เริ่ม: ${data.startTime} น.\n` +
+    `เสร็จ: ${data.endTime} น.\n` +
+    `รวมเวลา: ${data.duration}\n` +
+    `────────────────────\n` +
+    `OK: ${data.okQty.toLocaleString()} pcs\n` +
+    `NG: ${data.ngQty.toLocaleString()} pcs\n` +
+    `Yield: ${data.yield}%\n` +
+    `────────────────────`
+  );
 }
 
-function buildDowntimeFlexMessage(data: {
-  orderId: string;
+function buildDowntimeMessage(data: {
   orderNumber: string;
   productName: string;
   machineName: string;
   reason: string;
   startTime: string;
-}) {
-  return {
-    type: "flex",
-    altText: `หยุดผลิตชั่วคราว: ${data.productName}`,
-    contents: {
-      type: "bubble",
-      header: {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "text",
-            text: "⚠️ หยุดผลิตชั่วคราว",
-            weight: "bold",
-            size: "lg",
-            color: "#FFFFFF",
-          },
-        ],
-        backgroundColor: "#EA4335",
-      },
-      body: {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "box",
-            layout: "vertical",
-            contents: [
-              { type: "text", text: "สินค้า", size: "xs", color: "#666666" },
-              { type: "text", text: data.productName, weight: "bold", size: "md" },
-            ],
-            margin: "md",
-          },
-          {
-            type: "box",
-            layout: "horizontal",
-            contents: [
-              {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                  { type: "text", text: "เครื่อง", size: "xs", color: "#666666" },
-                  { type: "text", text: data.machineName },
-                ],
-                flex: 1,
-              },
-              {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                  { type: "text", text: "สาเหตุ", size: "xs", color: "#666666" },
-                  { type: "text", text: data.reason, weight: "bold", color: "#EA4335" },
-                ],
-                flex: 1,
-              },
-            ],
-            margin: "sm",
-          },
-          {
-            type: "box",
-            layout: "horizontal",
-            contents: [
-              {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                  { type: "text", text: "เวลาเริ่ม Downtime", size: "xs", color: "#666666" },
-                  { type: "text", text: data.startTime, weight: "bold" },
-                ],
-                flex: 1,
-              },
-              {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                  { type: "text", text: "ระยะเวลา", size: "xs", color: "#666666" },
-                  { type: "text", text: "กำลังนับ...", weight: "bold", color: "#EA4335" },
-                ],
-                flex: 1,
-              },
-            ],
-            margin: "sm",
-          },
-          {
-            type: "separator",
-            margin: "lg",
-          },
-          {
-            type: "text",
-            text: "ระบบได้แจ้งเตือนทีม Maintenance แล้ว",
-            size: "sm",
-            color: "#666666",
-            align: "center",
-            margin: "md",
-            wrap: true,
-          },
-        ],
-      },
-      footer: {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "button",
-            action: {
-              type: "postback",
-              label: "🔄 กลับมาผลิตต่อ",
-              data: `action=resume&order_id=${data.orderId}`,
-              displayText: "กลับมาผลิตต่อ",
-            },
-            style: "primary",
-            color: "#06C755",
-          },
-        ],
-      },
-    },
-  };
+}): string {
+  return (
+    `⚠️ หยุดผลิตชั่วคราว\n` +
+    `────────────────────\n` +
+    `Order: ${data.orderNumber}\n` +
+    `สินค้า: ${data.productName}\n` +
+    `เครื่อง: ${data.machineName}\n` +
+    `สาเหตุ: ${data.reason}\n` +
+    `เวลาเริ่ม: ${data.startTime} น.\n` +
+    `────────────────────\n` +
+    `ระบบได้แจ้งเตือนทีม Maintenance แล้ว`
+  );
 }
 
-/** ดึงข้อความทั้งหมดจากโครงสร้าง message แล้วส่งเข้า Telegram ของพนักงาน */
-function flattenText(node: unknown, out: string[] = []): string[] {
-  if (!node || typeof node !== "object") return out;
-  if (Array.isArray(node)) {
-    for (const item of node) flattenText(item, out);
-    return out;
-  }
-  const obj = node as Record<string, unknown>;
-  if (obj["type"] === "text" && typeof obj["text"] === "string") {
-    out.push(obj["text"]);
-  }
-  for (const key of ["header", "body", "footer", "contents"]) {
-    if (obj[key]) flattenText(obj[key], out);
-  }
-  return out;
-}
+// ============================================
+// Send Message to Worker
+// ============================================
 
-async function sendWorkerMessage(
-  chatId: string,
-  message: unknown
-): Promise<void> {
+async function sendWorkerMessage(chatId: string, text: string): Promise<void> {
   const { sendTelegramMessage } = await import("@/lib/telegram.server");
-  let text: string;
-  if (typeof message === "string") {
-    text = message;
-  } else {
-    const lines = flattenText(message);
-    const obj = message as { altText?: string };
-    text = lines.length > 0 ? lines.join("\n") : (obj?.altText ?? "แจ้งเตือนการผลิต");
-  }
   try {
     await sendTelegramMessage(chatId, text);
   } catch (e) {

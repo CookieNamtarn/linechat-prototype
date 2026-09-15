@@ -2,9 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { replyToConversation, markConversationRead } from "@/lib/telegram.functions";
+import { replyToConversation, markConversationRead, getTelegramGroup, setTelegramGroup } from "@/lib/telegram.functions";
 import { useServerFn } from "@tanstack/react-start";
-import { MessageCircle, Send, Megaphone, ClipboardList, User } from "lucide-react";
+import { MessageCircle, Send, Megaphone, ClipboardList, User, Settings, Check } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
@@ -31,7 +31,7 @@ export const Route = createFileRoute("/")({
 
 type Conversation = {
   id: string;
-  line_user_id: string;
+  telegram_chat_id: string | null;
   display_name: string | null;
   picture_url: string | null;
   last_message_at: string | null;
@@ -66,7 +66,12 @@ function Inbox() {
   const [sending, setSending] = useState(false);
   const replyFn = useServerFn(replyToConversation);
   const markReadFn = useServerFn(markConversationRead);
+  const getGroupFn = useServerFn(getTelegramGroup);
+  const setGroupFn = useServerFn(setTelegramGroup);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [groupInput, setGroupInput] = useState("");
+  const [savingGroup, setSavingGroup] = useState(false);
 
   const { data: conversations = [] } = useQuery({
     queryKey: ["conversations"],
@@ -92,6 +97,11 @@ function Inbox() {
       if (error) throw error;
       return data as Message[];
     },
+  });
+
+  const { data: group } = useQuery({
+    queryKey: ["telegram-group"],
+    queryFn: () => getGroupFn({}),
   });
 
   // Realtime updates
@@ -145,31 +155,90 @@ function Inbox() {
     }
   };
 
+  const saveGroup = async () => {
+    if (!groupInput.trim() || savingGroup) return;
+    setSavingGroup(true);
+    try {
+      await setGroupFn({ data: { chatId: groupInput.trim() } });
+      toast.success("บันทึกกลุ่มปลายทางแล้ว");
+      setGroupInput("");
+      queryClient.invalidateQueries({ queryKey: ["telegram-group"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "บันทึกไม่สำเร็จ");
+    } finally {
+      setSavingGroup(false);
+    }
+  };
+
   return (
     <div className="flex h-screen flex-col bg-background">
       {/* Header */}
       <header className="flex items-center justify-between border-b bg-card px-4 py-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#06C755]">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0088CC]">
             <MessageCircle className="h-5 w-5 text-white" />
           </div>
           <h1 className="text-lg font-semibold">Telegram Inbox</h1>
         </div>
-        <Link
-          to="/planner"
-          className="inline-flex items-center gap-2 rounded-md bg-[#1A73E8] px-3 py-2 text-sm font-medium text-white hover:bg-[#1557b0]"
-        >
-          <ClipboardList className="h-4 w-4" />
-          Planner
-        </Link>
-        <Link
-          to="/broadcast"
-          className="inline-flex items-center gap-2 rounded-md bg-[#06C755] px-3 py-2 text-sm font-medium text-white hover:bg-[#05b04b]"
-        >
-          <Megaphone className="h-4 w-4" />
-          Broadcast
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className={`flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent ${showSettings ? "bg-accent" : ""}`}
+            aria-label="ตั้งค่ากลุ่ม"
+          >
+            <Settings className="h-5 w-5" />
+          </button>
+          <Link
+            to="/planner"
+            className="inline-flex items-center gap-2 rounded-md bg-[#1A73E8] px-3 py-2 text-sm font-medium text-white hover:bg-[#1557b0]"
+          >
+            <ClipboardList className="h-4 w-4" />
+            Planner
+          </Link>
+          <Link
+            to="/broadcast"
+            className="inline-flex items-center gap-2 rounded-md bg-[#0088CC] px-3 py-2 text-sm font-medium text-white hover:bg-[#006da3]"
+          >
+            <Megaphone className="h-4 w-4" />
+            Broadcast
+          </Link>
+        </div>
       </header>
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <div className="border-b bg-muted/30 px-4 py-3">
+          <div className="mx-auto max-w-2xl">
+            <h2 className="mb-2 text-sm font-semibold">ตั้งค่ากลุ่ม Telegram ปลายทาง</h2>
+            <p className="mb-3 text-xs text-muted-foreground">
+              เพิ่มบอทเข้ากลุ่ม แล้วพิมพ์ข้อความในกลุ่ม 1 ครั้ง ระบบจะจำรหัสกลุ่มให้อัตโนมัติ
+              หรือกรอกรหัสกลุ่มเอง (เช่น -1001234567890)
+            </p>
+            <div className="flex gap-2">
+              <input
+                value={groupInput}
+                onChange={(e) => setGroupInput(e.target.value)}
+                placeholder="-1001234567890"
+                className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#0088CC]/50"
+              />
+              <button
+                onClick={saveGroup}
+                disabled={savingGroup || !groupInput.trim()}
+                className="inline-flex items-center gap-2 rounded-lg bg-[#0088CC] px-4 py-2 text-sm font-medium text-white hover:bg-[#006da3] disabled:opacity-40"
+              >
+                <Check className="h-4 w-4" />
+                {savingGroup ? "กำลังบันทึก..." : "บันทึก"}
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              สถานะ:{" "}
+              {group?.chatId
+                ? `ตั้งค่ากลุ่มแล้ว (${group.chatId})`
+                : "ยังไม่ได้ตั้งค่ากลุ่ม"}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-1 overflow-hidden">
         {/* Conversation list */}
@@ -216,7 +285,7 @@ function Inbox() {
                       {c.last_message_text ?? ""}
                     </p>
                     {c.unread_count > 0 && (
-                      <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#06C755] px-1.5 text-xs font-medium text-white">
+                      <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#0088CC] px-1.5 text-xs font-medium text-white">
                         {c.unread_count}
                       </span>
                     )}
@@ -261,7 +330,7 @@ function Inbox() {
                     <div
                       className={`max-w-[70%] rounded-2xl px-4 py-2 text-sm ${
                         m.direction === "outbound"
-                          ? "rounded-br-sm bg-[#06C755] text-white"
+                          ? "rounded-br-sm bg-[#0088CC] text-white"
                           : "rounded-bl-sm border bg-card"
                       }`}
                     >
@@ -296,12 +365,12 @@ function Inbox() {
                   }}
                   placeholder="พิมพ์ข้อความตอบกลับ..."
                   rows={1}
-                  className="max-h-32 flex-1 resize-none rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#06C755]/50"
+                  className="max-h-32 flex-1 resize-none rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#0088CC]/50"
                 />
                 <button
                   onClick={send}
                   disabled={sending || !draft.trim()}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#06C755] text-white transition-colors hover:bg-[#05b04b] disabled:opacity-40"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#0088CC] text-white transition-colors hover:bg-[#006da3] disabled:opacity-40"
                   aria-label="ส่งข้อความ"
                 >
                   <Send className="h-4 w-4" />
