@@ -92,8 +92,37 @@ function BroadcastPage() {
 
       <main className="mx-auto max-w-2xl space-y-8 p-6">
         <section className="rounded-xl border bg-card p-5">
+          <h2 className="mb-2 text-sm font-semibold">กลุ่ม Telegram ปลายทาง</h2>
+          <p className="mb-3 text-xs text-muted-foreground">
+            เพิ่มบอทเข้ากลุ่ม แล้วพิมพ์ข้อความในกลุ่ม 1 ครั้ง ระบบจะจำรหัสกลุ่มให้อัตโนมัติ
+            หรือกรอกรหัสกลุ่มเอง (เช่น -1001234567890)
+          </p>
+          <div className="flex gap-2">
+            <input
+              value={groupInput}
+              onChange={(e) => setGroupInput(e.target.value)}
+              placeholder="-1001234567890"
+              className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#06C755]/50"
+            />
+            <button
+              onClick={saveGroup}
+              disabled={savingGroup || !groupInput.trim()}
+              className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-40"
+            >
+              {savingGroup ? "กำลังบันทึก..." : "บันทึก"}
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            สถานะ:{" "}
+            {group?.chatId
+              ? `ตั้งค่ากลุ่มแล้ว (${group.chatId})`
+              : "ยังไม่ได้ตั้งค่ากลุ่ม"}
+          </p>
+        </section>
+
+        <section className="rounded-xl border bg-card p-5">
           <label className="mb-2 block text-sm font-medium">
-            ข้อความถึงผู้ติดตามทั้งหมด
+            ข้อความถึงกลุ่ม Telegram
           </label>
           <textarea
             value={text}
