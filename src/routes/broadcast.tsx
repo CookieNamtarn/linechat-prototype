@@ -2,7 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { sendBroadcast } from "@/lib/telegram.functions";
+import {
+  sendBroadcast,
+  getTelegramGroup,
+  setTelegramGroup,
+} from "@/lib/telegram.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Megaphone, Send } from "lucide-react";
 import { toast } from "sonner";
